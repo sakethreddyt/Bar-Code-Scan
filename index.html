@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barcode Scanner App</title>
+
+<link rel="manifest" href="manifest.json">
+
+<script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: #f5f5f5;
+    padding: 10px;
+}
+
+#scanner {
+    width: 100%;
+    max-width: 350px;
+    margin: auto;
+    border: 2px solid #000;
+}
+
+button {
+    padding: 10px 15px;
+    margin: 6px;
+    font-size: 15px;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+li {
+    background: #fff;
+    margin: 4px;
+    padding: 8px;
+    border-radius: 4px;
+}
+</style>
+</head>
+
+<body>
+
+<h3>Barcode Scanner</h3>
+
+<div id="scanner"></div>
+
+<button onclick="downloadXLSX()">Download Excel</button>
+<button onclick="clearData()">Clear</button>
+
+<ul id="resultList"></ul>
+
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js');
+}
+
+let scanned = [];
+
+Quagga.init({
+    inputStream: {
+        type: "LiveStream",
+        target: document.querySelector("#scanner"),
+        constraints: { facingMode: "environment" }
+    },
+    decoder: {
+        readers: ["code_128_reader", "code_39_reader", "ean_reader"]
+    }
+}, function(err) {
+    if (err) {
+        alert("Camera not supported");
+        return;
+    }
+    Quagga.start();
+});
+
+Quagga.onDetected(function(data) {
+    let code = data.codeResult.code;
+
+    if (!scanned.includes(code)) {
+        scanned.push(code);
+        let li = document.createElement("li");
+        li.innerText = code;
+        document.getElementById("resultList").appendChild(li);
+    }
+});
+
+function downloadXLSX() {
+    let wb = XLSX.utils.book_new();
+    let wsData = [["Barcode Number"]];
+
+    scanned.forEach(code => wsData.push([code]));
+
+    let ws = XLSX.utils.aoa_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, ws, "Scans");
+
+    XLSX.writeFile(wb, "barcode_data.xlsx");
+}
+
+function clearData() {
+    scanned = [];
+    document.getElementById("resultList").innerHTML = "";
+}
+</script>
+
+</body>
+</html>
